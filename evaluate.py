@@ -2,30 +2,37 @@ import gymnasium as gym
 import highway_env
 import pygame
 import json
+import time
 import matplotlib.pyplot as plt
 from stable_baselines3 import PPO
 
-# --- Load trained model ---
+ENV_CONFIG = {
+    "observation": {
+        "type": "Kinematics",
+        "vehicles_count": 10,
+    },
+    "vehicles_count": 10,
+    "lanes_count": 2,
+    "simulation_frequency": 5,
+    "policy_frequency": 1,
+    "duration": 20,
+}
+
 model = PPO.load("agents/ppo_highway")
 print("Model loaded. Replaying 10,000 step evaluation visually...")
 
-# --- Load real metrics from train.py ---
+
 with open("results/latest.json") as f:
     metrics = json.load(f)
 print(f"Real data: {metrics}")
 
-# --- Setup pygame ---
 pygame.init()
-env = gym.make("highway-v0", render_mode="human", config={
-    "simulation_frequency": 15,
-    "policy_frequency": 5
-})
+env = gym.make("highway-v0", render_mode="human", config=ENV_CONFIG)
 obs, _ = env.reset()
 steps = 0
 running = True
 clock = pygame.time.Clock()
 
-# --- Visual replay of the same 10,000 steps ---
 while running and steps < 10_000:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -36,18 +43,20 @@ while running and steps < 10_000:
     obs, _, done, truncated, _ = env.step(action)
     steps += 1
 
+    env.render()                 
+    pygame.event.pump()          
     pygame.display.flip()
-    clock.tick(60)
+    clock.tick(30)              
 
     if done or truncated:
         obs, _ = env.reset()
 
-# --- Cleanup ---
+
 env.close()
 pygame.quit()
 print(f"Visual replay finished at step {steps}.")
 
-# --- Plot the real data from train.py ---
+
 labels = list(metrics.keys())
 values = list(metrics.values())
 plt.figure(figsize=(8, 4))

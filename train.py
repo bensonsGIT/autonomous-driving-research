@@ -3,22 +3,26 @@ import highway_env
 import json, os
 from stable_baselines3 import PPO
 
-# --- Setup ---
-env = gym.make("highway-v0", render_mode=None, config={
+ENV_CONFIG = {
     "observation": {
         "type": "Kinematics",
-        "vehicles_count": 5, 
-    }
-})
+        "vehicles_count": 10,
+    },
+    "vehicles_count": 10,
+    "lanes_count": 2,
+    "simulation_frequency": 5,
+    "policy_frequency": 1,
+    "duration": 20,
+}
+
+env = gym.make("highway-v0", render_mode=None, config=ENV_CONFIG)
 model = PPO("MlpPolicy", env, verbose=1, tensorboard_log="./logs/")
 
-# --- Training ---
 print("Training for 10,000 steps...")
 model.learn(total_timesteps=10_000)
 model.save("agents/ppo_highway")
 print("Model saved.")
 
-# --- Evaluate silently for 10,000 steps (real data) ---
 print("Evaluating for 10,000 steps...")
 obs, _ = env.reset()
 total_reward, crashes, steps = 0, 0, 0
@@ -34,7 +38,6 @@ while steps < 10_000:
 
 env.close()
 
-# --- Save real metrics ---
 os.makedirs("results", exist_ok=True)
 metrics = {
     "total_reward": round(total_reward, 2),
