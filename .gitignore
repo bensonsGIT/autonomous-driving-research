@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+logs/
+*.zip
+training_output.log
+training.pid
+results/latest_metrics.png

@@ -1,52 +1,53 @@
-import gymnasium as gym
-import highway_env
-import json, os
-from stable_baselines3 import PPO
+import json
+import os
+import numpy as np
+from agents.ppo_agent import make_env, load_or_create_model
 
-ENV_CONFIG = {
-    "observation": {
-        "type": "Kinematics",
-        "vehicles_count": 10,
-    },
-    "vehicles_count": 10,
-    "lanes_count": 2,
-    "simulation_frequency": 5,
-    "policy_frequency": 1,
-    "duration": 20,
-}
+TRAIN_STEPS = 5_000
+EVAL_STEPS = 10_000
+MODEL_PATH = "agents/ppo_highway"
 
-env = gym.make("highway-v0", render_mode=None, config=ENV_CONFIG)
-model = PPO("MlpPolicy", env, verbose=1, tensorboard_log="./logs/")
 
-print("Training for 10,000 steps...")
-model.learn(total_timesteps=10_000)
-model.save("agents/ppo_highway")
-print("Model saved.")
+def main():
+    env = make_env()
+    model = load_or_create_model(env)
 
-print("Evaluating for 10,000 steps...")
-obs, _ = env.reset()
-total_reward, crashes, steps = 0, 0, 0
+    print(f"Training for {TRAIN_STEPS} steps...")
+    model.learn(total_timesteps=TRAIN_STEPS)
+    model.save(MODEL_PATH)
+    print("Model saved.")
 
-while steps < 10_000:
-    action, _ = model.predict(obs, deterministic=True)
-    obs, reward, done, truncated, info = env.step(action)
-    total_reward += reward
-    crashes += int(info.get("crashed", False))
-    steps += 1
-    if done or truncated:
-        obs, _ = env.reset()
+    print(f"Evaluating for {EVAL_STEPS} steps...")
+    obs, _ = env.reset()
+    total_reward, crashes, steps = 0, 0, 0
+    speeds = []
 
-env.close()
+    while steps < EVAL_STEPS:
+        action, _ = model.predict(obs, deterministic=True)
+        obs, reward, done, truncated, info = env.step(action)
+        total_reward += reward
+        crashes += int(info.get("crashed", False))
+        speeds.append(info.get("speed", 0))
+        steps += 1
+        if done or truncated:
+            obs, _ = env.reset()
 
-os.makedirs("results", exist_ok=True)
-metrics = {
-    "total_reward": round(total_reward, 2),
-    "crashes": crashes,
-    "steps": steps,
-    "reward_per_step": round(total_reward / steps, 4)
-}
-with open("results/latest.json", "w") as f:
-    json.dump(metrics, f, indent=2)
+    env.close()
 
-print("Results:", metrics)
-print("Done. Run evaluate.py to watch the agent replay these exact conditions.")
+    os.makedirs("results", exist_ok=True)
+    metrics = {
+        "total_reward": round(total_reward, 2),
+        "crashes": crashes,
+        "steps": steps,
+        "reward_per_step": round(total_reward / steps, 4),
+        "avg_speed_ms": round(np.mean(speeds), 2),
+        "avg_speed_kmh": round(np.mean(speeds) * 3.6, 2),
+    }
+    with open("results/latest.json", "w") as f:
+        json.dump(metrics, f, indent=2)
+
+    print(json.dumps(metrics, indent=2))
+
+
+if __name__ == "__main__":
+    main()
