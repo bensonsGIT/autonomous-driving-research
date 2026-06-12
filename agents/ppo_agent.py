@@ -20,11 +20,10 @@ class CustomRewardWrapper(gym.Wrapper):
     def step(self, action):
         obs, _, done, truncated, info = self.env.step(action)
 
-        # compute_reward can return either a float or (float, dict)
         result = compute_reward(obs, action, info)
         if isinstance(result, tuple):
             custom_reward, breakdown = result
-            info["reward_breakdown"] = breakdown  # store breakdown in info for logging
+            info["reward_breakdown"] = breakdown  
         else:
             custom_reward = result
 
@@ -41,7 +40,7 @@ def make_env(render_mode=None):
 
 
 def load_or_create_model(env, model_path="agents/ppo_highway.zip"):
-    # strip .zip if passed with extension since PPO.load adds it automatically
+
     clean_path = model_path.replace(".zip", "")
 
     if os.path.exists(model_path) or os.path.exists(clean_path + ".zip"):

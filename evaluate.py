@@ -11,7 +11,6 @@ from agents.ppo_agent import make_env
 EVAL_EPISODES = 100
 
 def main():
-    # --- Load model and train metrics ---
     model = PPO.load("agents/ppo_highway")
     print("Model loaded.")
 
@@ -19,7 +18,6 @@ def main():
         train_metrics = json.load(f)
     print(f"Train metrics: {train_metrics}")
 
-    # --- Setup pygame ---
     pygame.init()
     env = make_env(render_mode="human")
     obs, _ = env.reset()
@@ -36,7 +34,6 @@ def main():
     crash_flash = 0
     running = True
 
-    # --- Episode-based visual loop ---
     while running and episodes_done < EVAL_EPISODES:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -53,7 +50,6 @@ def main():
             current_crashed = True
             crash_flash = 10
 
-        # red crash flash
         if crash_flash > 0:
             surface = pygame.display.get_surface()
             flash = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
@@ -62,7 +58,6 @@ def main():
             surface.blit(flash, (0, 0))
             crash_flash -= 1
 
-        # HUD
         surface = pygame.display.get_surface()
         font = pygame.font.SysFont("monospace", 20, bold=True)
         surface.blit(font.render(
@@ -87,12 +82,10 @@ def main():
             current_crashed = False
             obs, _ = env.reset()
 
-    # --- Cleanup ---
     env.close()
     pygame.quit()
     print(f"Finished {episodes_done} episodes.")
 
-    # --- Save evaluate metrics ---
     os.makedirs("results", exist_ok=True)
     eval_metrics = {
         "episodes": episodes_done,
@@ -107,7 +100,6 @@ def main():
         json.dump(eval_metrics, f, indent=2)
     print(f"Evaluate metrics: {eval_metrics}")
 
-    # --- Plot train vs evaluate comparison ---
     fig, axes = plt.subplots(1, 3, figsize=(14, 5))
 
     axes[0].bar(["Train", "Evaluate"],
@@ -127,7 +119,7 @@ def main():
         color=["steelblue", "seagreen"])
     axes[2].set_title("Mean Episode Length")
     axes[2].set_ylabel("Steps")
-    axes[2].axhline(y=40, color="gray", linestyle="--", label="Max (40)")
+    axes[2].axhline(y=100, color="gray", linestyle="--", label="Max (100)")
     axes[2].legend()
 
     plt.suptitle("Autonomous Driving Agent — Train vs Evaluate", fontweight="bold")

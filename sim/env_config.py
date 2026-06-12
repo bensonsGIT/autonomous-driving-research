@@ -1,21 +1,10 @@
 ENV_CONFIG = {
-    "observation": {
-        "type": "Kinematics",
-<<<<<<< HEAD
-        "vehicles_count": 10,
-    },
-    "vehicles_count": 10,
-    "lanes_count": 2,
-    "simulation_frequency": 5,
-    "policy_frequency": 1,
-    "duration": 20,
-=======
-        "vehicles_count": 5,
-    },
-    "vehicles_count": 10,
-    "lanes_count": 2,
-    "simulation_frequency": 15,
-    "policy_frequency": 1,
-    "duration": 40,
->>>>>>> 62bed5ec (changed env, train, and evaluate)
+    "action": {"type": "ContinuousAction"},
+    "lanes_count": 4,
+    "vehicles_count": 50,
+    "duration": 40,            
+    "policy_frequency": 1,   
+    "normalize_reward": True,
 }
+
+MAX_STEPS = ENV_CONFIG["duration"] * ENV_CONFIG["policy_frequency"]
