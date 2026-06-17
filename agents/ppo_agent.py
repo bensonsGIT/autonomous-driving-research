@@ -4,6 +4,7 @@ import gymnasium as gym
 import highway_env
 from stable_baselines3 import PPO
 from stable_baselines3.common.env_util import make_vec_env
+from stable_baselines3.common.vec_env import SubprocVecEnv
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -56,7 +57,8 @@ def make_env(render_mode=None):
 def make_vec_env_parallel(n_envs=4):
     return make_vec_env(
         lambda: CustomRewardWrapper(gym.make("highway-v0", config=ENV_CONFIG)),
-        n_envs=n_envs
+        n_envs=n_envs,
+        vec_env_cls=SubprocVecEnv
     )
 
 
