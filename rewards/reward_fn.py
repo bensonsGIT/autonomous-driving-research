@@ -1,7 +1,7 @@
 def compute_reward(obs, action, info):
     """
-    Baseline reward function (v0). Do not modify.
-    Established before agentic optimization loop began.
+    Current reward function — modified each iteration by the optimization loop.
+    See rewards/baseline.py for the original v0 reference (do not modify that file).
     """
     reward = 0.0
     speed = info.get("speed", 0)
