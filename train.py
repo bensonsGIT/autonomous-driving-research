@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import BaseCallback
-from agents.ppo_agent import make_env, load_or_create_model
+from agents.ppo_agent import make_env, make_vec_env_parallel, load_or_create_model
 
 TRAIN_STEPS = 1_000_000
 EVAL_EPISODES = 100
@@ -54,8 +54,9 @@ class RenderCallback(BaseCallback):
 
 
 def main():
-    env = make_env()
-    model = load_or_create_model(env)
+    train_env = make_vec_env_parallel(n_envs=4)
+    eval_env = make_env()
+    model = load_or_create_model(train_env)
 
     # --- Training ---
     print(f"Training for {TRAIN_STEPS} steps...")
@@ -66,7 +67,7 @@ def main():
     print("Model saved.")
 
     print(f"Evaluating over {EVAL_EPISODES} episodes...")
-    obs, _ = env.reset()
+    obs, _ = eval_env.reset()
 
     episode_rewards = []
     episode_lengths = []
@@ -80,7 +81,7 @@ def main():
 
     while episodes_done < EVAL_EPISODES:
         action, _ = model.predict(obs, deterministic=True)
-        obs, reward, done, truncated, info = env.step(action)
+        obs, reward, done, truncated, info = eval_env.step(action)
 
         current_reward += reward
         current_length += 1
@@ -98,9 +99,10 @@ def main():
             current_reward = 0
             current_length = 0
             current_crashed = False
-            obs, _ = env.reset()
+            obs, _ = eval_env.reset()
 
-    env.close()
+    train_env.close()
+    eval_env.close()
 
     # --- Save metrics ---
     os.makedirs("results", exist_ok=True)
