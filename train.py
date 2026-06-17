@@ -3,15 +3,17 @@ import os
 import time
 import pygame
 import numpy as np
+import torch
 import matplotlib.pyplot as plt
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import BaseCallback
-from agents.ppo_agent import make_env, make_vec_env_parallel, load_or_create_model
+from agents.ppo_agent import make_env, make_vec_env_parallel, load_or_create_model, PPO_HYPERPARAMS
 
 TRAIN_STEPS = 1_000_000
 EVAL_EPISODES = 100
 MODEL_PATH = "agents/ppo_highway"
 RENDER_EVERY_N_EPISODES = 100
+SEED = 42
 
 
 # --- Render callback ---
@@ -54,9 +56,12 @@ class RenderCallback(BaseCallback):
 
 
 def main():
+    np.random.seed(SEED)
+    torch.manual_seed(SEED)
+
     train_env = make_vec_env_parallel(n_envs=4)
     eval_env = make_env()
-    model = load_or_create_model(train_env)
+    model = load_or_create_model(train_env, seed=SEED)
 
     # --- Training ---
     print(f"Training for {TRAIN_STEPS} steps...")
@@ -67,7 +72,7 @@ def main():
     print("Model saved.")
 
     print(f"Evaluating over {EVAL_EPISODES} episodes...")
-    obs, _ = eval_env.reset()
+    obs, _ = eval_env.reset(seed=SEED)
 
     episode_rewards = []
     episode_lengths = []
@@ -116,6 +121,9 @@ def main():
         "max_reward": round(float(np.max(episode_rewards)), 2),
         "avg_speed_ms": round(float(np.mean(all_speeds)), 2),
         "avg_speed_kmh": round(float(np.mean(all_speeds)) * 3.6, 2),
+        "train_steps": TRAIN_STEPS,
+        "seed": SEED,
+        "ppo_hyperparams": PPO_HYPERPARAMS,
     }
     with open("results/latest.json", "w") as f:
         json.dump(metrics, f, indent=2)

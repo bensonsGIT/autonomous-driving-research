@@ -10,6 +10,19 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from rewards.reward_fn import compute_reward
 from sim.env_config import ENV_CONFIG
 
+PPO_HYPERPARAMS = {
+    "learning_rate": 3e-4,
+    "n_steps": 2048,
+    "batch_size": 64,
+    "n_epochs": 10,
+    "gamma": 0.99,
+    "gae_lambda": 0.95,
+    "clip_range": 0.2,
+    "ent_coef": 0.0,
+    "vf_coef": 0.5,
+    "max_grad_norm": 0.5,
+}
+
 
 class CustomRewardWrapper(gym.Wrapper):
     """Replaces the default highway-env reward with compute_reward."""
@@ -24,7 +37,7 @@ class CustomRewardWrapper(gym.Wrapper):
         result = compute_reward(obs, action, info)
         if isinstance(result, tuple):
             custom_reward, breakdown = result
-            info["reward_breakdown"] = breakdown  
+            info["reward_breakdown"] = breakdown
         else:
             custom_reward = result
 
@@ -47,7 +60,7 @@ def make_vec_env_parallel(n_envs=4):
     )
 
 
-def load_or_create_model(env, model_path="agents/ppo_highway.zip"):
+def load_or_create_model(env, model_path="agents/ppo_highway.zip", seed=42):
 
     clean_path = model_path.replace(".zip", "")
 
@@ -56,4 +69,4 @@ def load_or_create_model(env, model_path="agents/ppo_highway.zip"):
         return PPO.load(clean_path, env=env, verbose=1, tensorboard_log="./logs/")
 
     print("No existing model found. Creating new model...")
-    return PPO("MlpPolicy", env, verbose=1, tensorboard_log="./logs/")
+    return PPO("MlpPolicy", env, verbose=1, tensorboard_log="./logs/", seed=seed, **PPO_HYPERPARAMS)
