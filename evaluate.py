@@ -1,3 +1,4 @@
+import argparse
 import json
 import os
 import numpy as np
@@ -11,12 +12,22 @@ from agents.ppo_agent import make_env
 EVAL_EPISODES = 100
 
 def main():
-    model = PPO.load("agents/ppo_highway")
-    print("Model loaded.")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--model", default="agents/ppo_highway", help="Path to model file (without .zip)")
+    parser.add_argument("--out", default="results/evaluate.json", help="Path to save eval metrics JSON")
+    args = parser.parse_args()
 
-    with open("results/latest.json") as f:
-        train_metrics = json.load(f)
-    print(f"Train metrics: {train_metrics}")
+    model = PPO.load(args.model)
+    print(f"Model loaded from {args.model}.")
+
+    train_metrics = None
+    train_json = args.out.replace("evaluate", "latest") if "evaluate" in args.out else None
+    for path in [train_json, "results/latest.json"]:
+        if path and os.path.exists(path):
+            with open(path) as f:
+                train_metrics = json.load(f)
+            print(f"Train metrics loaded from {path}.")
+            break
 
     pygame.init()
     env = make_env(render_mode="human")
@@ -86,47 +97,50 @@ def main():
     pygame.quit()
     print(f"Finished {episodes_done} episodes.")
 
-    os.makedirs("results", exist_ok=True)
+    os.makedirs(os.path.dirname(args.out) if os.path.dirname(args.out) else "results", exist_ok=True)
     eval_metrics = {
         "episodes": episodes_done,
         "mean_reward": round(float(np.mean(episode_rewards)), 2) if episode_rewards else 0,
-        "mean_length": round(float(np.mean(episode_lengths)), 2) if episode_lengths else 0,
+        "mean_length": round(float(np.mean(episode_lengths)), 2) if episode_rewards else 0,
         "total_crashes": sum(episode_crashes),
         "crash_rate": round(sum(episode_crashes) / max(episodes_done, 1), 4),
         "min_reward": round(float(np.min(episode_rewards)), 2) if episode_rewards else 0,
         "max_reward": round(float(np.max(episode_rewards)), 2) if episode_rewards else 0,
     }
-    with open("results/evaluate.json", "w") as f:
+    with open(args.out, "w") as f:
         json.dump(eval_metrics, f, indent=2)
-    print(f"Evaluate metrics: {eval_metrics}")
+    print(f"Eval metrics saved to {args.out}.")
+    print(json.dumps(eval_metrics, indent=2))
 
-    fig, axes = plt.subplots(1, 3, figsize=(14, 5))
+    if train_metrics:
+        fig, axes = plt.subplots(1, 3, figsize=(14, 5))
 
-    axes[0].bar(["Train", "Evaluate"],
-        [train_metrics["mean_reward"], eval_metrics["mean_reward"]],
-        color=["steelblue", "seagreen"])
-    axes[0].set_title("Mean Reward per Episode")
-    axes[0].set_ylabel("Reward")
+        axes[0].bar(["Train", "Evaluate"],
+            [train_metrics["mean_reward"], eval_metrics["mean_reward"]],
+            color=["steelblue", "seagreen"])
+        axes[0].set_title("Mean Reward per Episode")
+        axes[0].set_ylabel("Reward")
 
-    axes[1].bar(["Train", "Evaluate"],
-        [train_metrics["crash_rate"], eval_metrics["crash_rate"]],
-        color=["tomato", "tomato"])
-    axes[1].set_title("Crash Rate")
-    axes[1].set_ylabel("Crashes / Episode")
+        axes[1].bar(["Train", "Evaluate"],
+            [train_metrics["crash_rate"], eval_metrics["crash_rate"]],
+            color=["tomato", "tomato"])
+        axes[1].set_title("Crash Rate")
+        axes[1].set_ylabel("Crashes / Episode")
 
-    axes[2].bar(["Train", "Evaluate"],
-        [train_metrics["mean_length"], eval_metrics["mean_length"]],
-        color=["steelblue", "seagreen"])
-    axes[2].set_title("Mean Episode Length")
-    axes[2].set_ylabel("Steps")
-    axes[2].axhline(y=100, color="gray", linestyle="--", label="Max (100)")
-    axes[2].legend()
+        axes[2].bar(["Train", "Evaluate"],
+            [train_metrics["mean_length"], eval_metrics["mean_length"]],
+            color=["steelblue", "seagreen"])
+        axes[2].set_title("Mean Episode Length")
+        axes[2].set_ylabel("Steps")
+        axes[2].axhline(y=100, color="gray", linestyle="--", label="Max (100)")
+        axes[2].legend()
 
-    plt.suptitle("Autonomous Driving Agent — Train vs Evaluate", fontweight="bold")
-    plt.tight_layout()
-    plt.savefig("results/evaluate_metrics.png")
-    plt.show()
-    print("Chart saved to results/evaluate_metrics.png")
+        plt.suptitle("Autonomous Driving Agent — Train vs Evaluate", fontweight="bold")
+        plt.tight_layout()
+        chart_path = args.out.replace(".json", "_chart.png")
+        plt.savefig(chart_path)
+        plt.show()
+        print(f"Chart saved to {chart_path}.")
 
 if __name__ == "__main__":
     main()
