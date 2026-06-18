@@ -61,7 +61,7 @@ def main():
 
     train_env = make_vec_env_parallel(n_envs=4)
     eval_env = make_env()
-    model = load_or_create_model(train_env, seed=SEED)
+    model = load_or_create_model(train_env, seed=SEED, log_dir=f"./logs/seed_{SEED}")
 
     # --- Training ---
     print(f"Training for {TRAIN_STEPS} steps...")

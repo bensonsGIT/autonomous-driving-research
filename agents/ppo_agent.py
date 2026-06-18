@@ -62,13 +62,13 @@ def make_vec_env_parallel(n_envs=4):
     )
 
 
-def load_or_create_model(env, model_path="agents/ppo_highway.zip", seed=42):
+def load_or_create_model(env, model_path="agents/ppo_highway.zip", seed=42, log_dir="./logs/"):
 
     clean_path = model_path.replace(".zip", "")
 
     if os.path.exists(model_path) or os.path.exists(clean_path + ".zip"):
         print(f"Loading existing model from {model_path}...")
-        return PPO.load(clean_path, env=env, verbose=1, tensorboard_log="./logs/")
+        return PPO.load(clean_path, env=env, verbose=1, tensorboard_log=log_dir)
 
     print("No existing model found. Creating new model...")
-    return PPO("MlpPolicy", env, verbose=1, tensorboard_log="./logs/", seed=seed, **PPO_HYPERPARAMS)
+    return PPO("MlpPolicy", env, verbose=1, tensorboard_log=log_dir, seed=seed, **PPO_HYPERPARAMS)
