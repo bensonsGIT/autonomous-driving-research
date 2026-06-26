@@ -1,0 +1,16 @@
+{
+  "seeds": [
+    42,
+    7,
+    0
+  ],
+  "episodes_per_seed": 100,
+  "crash_rate": 0.71,
+  "crash_rate_std": 0.4101,
+  "total_crashes": 71.0,
+  "mean_length": 16.12,
+  "mean_length_std": 13.55,
+  "avg_speed_ms": 27.46,
+  "avg_speed_kmh": 98.88,
+  "avg_speed_kmh_std": 3.59
+}
