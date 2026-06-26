@@ -23,7 +23,11 @@ def load_context(iteration: int) -> tuple[str, dict]:
     return reward_code, metrics
 
 
+BEHAVIOR_KEYS = {"crash_rate", "total_crashes", "avg_speed_kmh", "avg_speed_ms", "mean_length", "episodes"}
+
+
 def build_prompt(reward_code: str, metrics: dict, iteration: int) -> str:
+    behavior = {k: v for k, v in metrics.items() if k in BEHAVIOR_KEYS}
     return f"""You are optimizing a reward function for an autonomous highway driving agent (PPO, highway-env).
 
 ## Current reward function (iteration {iteration})
@@ -31,10 +35,12 @@ def build_prompt(reward_code: str, metrics: dict, iteration: int) -> str:
 {reward_code}
 ```
 
-## Performance metrics from this iteration
+## Behavior metrics from this iteration (reward-function-agnostic)
 ```json
-{json.dumps(metrics, indent=2)}
+{json.dumps(behavior, indent=2)}
 ```
+
+Goal: minimize crash_rate, maximize avg_speed_kmh, maximize mean_length (up to episode max of 40 steps).
 
 ## Task
 Write an improved reward function to `rewards/reward_fn.py`. The function signature must remain:
@@ -61,7 +67,7 @@ def main():
     print(f"[optimizer] Loading context for iteration {args.iteration}...")
     reward_code, metrics = load_context(args.iteration)
 
-    print(f"[optimizer] Crash rate: {metrics['crash_rate']:.2%}  Mean reward: {metrics['mean_reward']}")
+    print(f"[optimizer] Crash rate: {metrics['crash_rate']:.2%}  Avg speed: {metrics['avg_speed_kmh']} km/h  Ep length: {metrics['mean_length']}")
 
     prompt = build_prompt(reward_code, metrics, args.iteration)
     print("[optimizer] Requesting improved reward function from agent...")

@@ -9,12 +9,13 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import BaseCallback
 from agents.ppo_agent import make_env, make_vec_env_parallel, load_or_create_model, PPO_HYPERPARAMS
 
-TRAIN_STEPS = 1_000_000
+TRAIN_STEPS = 100_000
 EVAL_EPISODES = 100
-MODEL_PATH = "agents/ppo_highway"
+MODEL_PATH = "agents/ppo_highway_opt_42"
 RENDER_EVERY_N_EPISODES = 100
 SEED = 42
 
+# Seeds: 42, 7, 102, 0
 
 # --- Render callback ---
 class RenderCallback(BaseCallback):
@@ -59,7 +60,7 @@ def main():
     np.random.seed(SEED)
     torch.manual_seed(SEED)
 
-    train_env = make_vec_env_parallel(n_envs=4)
+    train_env = make_vec_env_parallel(n_envs=6)
     eval_env = make_env()
     model = load_or_create_model(train_env, seed=SEED, log_dir=f"./logs/seed_{SEED}")
 
