@@ -61,15 +61,18 @@ def main():
             current_crashed = True
             crash_flash = 10
 
+        env.render()
+        pygame.event.pump()
+
+        surface = pygame.display.get_surface()
+
         if crash_flash > 0:
-            surface = pygame.display.get_surface()
             flash = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
             alpha = int((crash_flash / 10) * 120)
             flash.fill((255, 0, 0, alpha))
             surface.blit(flash, (0, 0))
             crash_flash -= 1
 
-        surface = pygame.display.get_surface()
         font = pygame.font.SysFont("monospace", 20, bold=True)
         surface.blit(font.render(
             f"Episode: {episodes_done + 1}/{EVAL_EPISODES}  "
@@ -77,8 +80,6 @@ def main():
             f"Reward: {current_reward:.1f}",
             True, (255, 255, 255)), (10, 10))
 
-        env.render()
-        pygame.event.pump()
         pygame.display.flip()
         clock.tick(30)
 
