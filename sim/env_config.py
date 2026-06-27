@@ -1,9 +1,9 @@
 ENV_CONFIG = {
     "action": {"type": "ContinuousAction"},
     "lanes_count": 4,
-    "vehicles_count": 50,
-    "duration": 40,            
-    "policy_frequency": 1,   
+    "vehicles_count": 25,
+    "duration": 400,
+    "policy_frequency": 10,
     "normalize_reward": True,
 }
 

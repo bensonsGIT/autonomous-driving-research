@@ -1,0 +1,14 @@
+{
+  "mean_reward": 2919.92,
+  "mean_length": 4000.0,
+  "crash_rate": 0.0,
+  "avg_speed_kmh": 91.52,
+  "seeds": [
+    42,
+    7,
+    0
+  ],
+  "reward_version": "v0_baseline",
+  "env_policy_frequency": 10,
+  "train_steps": 500000
+}

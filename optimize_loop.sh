@@ -10,20 +10,28 @@ MAX_ITER=${2:-10}
 while [ "$ITERATION" -le "$MAX_ITER" ]; do
     echo "===== Iteration $ITERATION / $MAX_ITER ====="
 
-    # Run training + evaluation
-    .venv/bin/python3 train.py
+    # Train and evaluate across 3 seeds
+    for SEED in 42 7 0; do
+        echo "  -- Seed $SEED --"
+        .venv/bin/python3 train.py --seed "$SEED"
+        .venv/bin/python3 evaluate_fixed.py --seed "$SEED"
+    done
 
-    # Save reward version
+    # Average fixed metrics across seeds
+    .venv/bin/python3 average_metrics.py --seeds 42 7 0
+
+    # Save reward version and archived metrics
     cp rewards/reward_fn.py "experiments/reward_v${ITERATION}.py"
-
-    # Copy metrics
-    cp results/latest.json "experiments/metrics_v${ITERATION}.json"
-    cp results/training_plot.png "experiments/plot_v${ITERATION}.png"
+    cp results/fixed_metrics.json "experiments/fixed_metrics_v${ITERATION}.json"
+    for SEED in 42 7 0; do
+        cp "results/fixed_metrics_seed_${SEED}.json" "experiments/fixed_metrics_v${ITERATION}_seed_${SEED}.json"
+        cp "results/training_plot_seed_${SEED}.png" "experiments/plot_v${ITERATION}_seed_${SEED}.png"
+    done
 
     # Commit this iteration
-    git add rewards/reward_fn.py experiments/ results/latest.json
+    git add rewards/reward_fn.py experiments/
     git commit -m "iter ${ITERATION}: agent reward update"
-    git tag "v${ITERATION}"
+    git tag -f "v${ITERATION}"
 
     echo "Iteration $ITERATION committed and tagged."
 

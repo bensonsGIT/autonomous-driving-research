@@ -1,58 +1,62 @@
 def compute_reward(obs, action, info):
     """
-    Improved reward function (v4) - Eliminate crashes while maintaining speed.
+    Improved reward function (v5) - Target: 0% crashes, 125-135 km/h, full episodes.
     
     Strategy:
-    1. Stronger crash penalty to emphasize zero crashes
-    2. Enhanced collision avoidance with time-to-collision awareness
-    3. Higher survival bonus to maximize episode completion
-    4. Encourage higher speeds safely (targeting 120-130 km/h)
-    5. More aggressive penalties for very close proximity
+    1. Very strong crash penalty to eliminate last 3% crashes
+    2. Fine-tuned collision avoidance with stricter proximity penalties
+    3. Increased speed incentive targeting 125-135 km/h range
+    4. Maintain high survival bonus for episode completion
+    5. Smarter TTC (time-to-collision) analysis
     """
     reward = 0.0
     speed = info.get("speed", 0)
     crashed = info.get("crashed", False)
     on_road = info.get("on_road", True)
     
-    # === CRASH PENALTY: Stronger to achieve 0% crash rate ===
+    # === CRASH PENALTY: Very strong to achieve 0% crash rate ===
     if crashed:
-        reward -= 50.0
+        reward -= 60.0
         return reward
     
     # === OFF-ROAD PENALTY ===
     if not on_road:
-        reward -= 10.0
+        reward -= 12.0
         return reward
     
-    # === SURVIVAL BONUS: Higher priority on episode completion ===
-    reward += 2.0
+    # === SURVIVAL BONUS: Critical for episode completion ===
+    reward += 2.5
     
-    # === SPEED REWARD: Encourage faster highway speeds safely ===
-    # Target: 32-36 m/s (115-130 km/h) to match v1 performance
-    # v1 achieved 138 km/h with 40% crash rate
-    # v3 achieved 117 km/h with 13% crash rate
-    # Goal: 125-135 km/h with 0% crash rate
+    # === SPEED REWARD: Push higher while maintaining safety ===
+    # Target: 33-38 m/s (118-137 km/h)
+    # Current v4: 122.55 km/h average
+    # Goal v5: 125-135 km/h average
     
-    if speed < 22.0:
+    if speed < 20.0:
         # Too slow - proportional reward
-        reward += speed * 0.10
-    elif speed < 30.0:
+        reward += speed * 0.12
+    elif speed < 28.0:
         # Accelerating - encourage progress
-        reward += 2.2 + (speed - 22.0) / 8.0 * 0.8
-    elif speed <= 38.0:
-        # Optimal highway speed range (108-137 km/h)
-        reward += 3.0
-    elif speed <= 42.0:
-        # Very fast but acceptable
-        reward += 3.0 - (speed - 38.0) / 4.0 * 0.6
+        reward += 2.4 + (speed - 20.0) / 8.0 * 1.0
+    elif speed <= 36.0:
+        # Optimal highway speed range (108-130 km/h)
+        # Linear increase to encourage higher speeds in this range
+        reward += 3.4 + (speed - 28.0) / 8.0 * 0.6
+    elif speed <= 40.0:
+        # Very fast - maximum reward
+        reward += 4.0
+    elif speed <= 44.0:
+        # Extremely fast but acceptable
+        reward += 4.0 - (speed - 40.0) / 4.0 * 0.4
     else:
-        # Excessive speed - moderate penalty
-        reward += max(1.8, 2.4 - (speed - 42.0) * 0.12)
+        # Too fast - moderate penalty
+        reward += max(2.2, 3.6 - (speed - 44.0) * 0.15)
     
-    # === COLLISION AVOIDANCE: Enhanced with TTC and proximity ===
+    # === COLLISION AVOIDANCE: Enhanced precision ===
     try:
         min_forward_dist = float('inf')
         collision_risk_penalty = 0.0
+        dangerous_proximity = False
         
         # Analyze nearby vehicles
         for i in range(1, min(5, obs.shape[0])):
@@ -69,64 +73,77 @@ def compute_reward(obs, action, info):
                 if vx_rel < -0.01:  # Closing in
                     ttc = -x_rel / vx_rel if x_rel > 0 else float('inf')
                 
-                # === PRIMARY: Vehicles ahead in same lane ===
-                if x_rel > 0 and abs(y_rel) < 0.25:
+                # === PRIMARY: Vehicles ahead in same/adjacent lane ===
+                if x_rel > 0 and abs(y_rel) < 0.3:
                     min_forward_dist = min(min_forward_dist, distance)
                     
-                    # Very aggressive penalties for close proximity
-                    if distance < 0.06:
+                    # Extremely aggressive penalties for very close proximity
+                    if distance < 0.05:
+                        collision_risk_penalty += 12.0
+                        dangerous_proximity = True
+                    elif distance < 0.08:
                         collision_risk_penalty += 8.0
-                    elif distance < 0.10:
+                        dangerous_proximity = True
+                    elif distance < 0.12:
                         collision_risk_penalty += 5.0
-                    elif distance < 0.15:
+                    elif distance < 0.16:
                         collision_risk_penalty += 3.0
-                    elif distance < 0.20:
+                    elif distance < 0.22:
                         collision_risk_penalty += 1.5
-                    elif distance < 0.25:
-                        collision_risk_penalty += 0.7
-                    elif distance < 0.35:
-                        collision_risk_penalty += 0.3
+                    elif distance < 0.30:
+                        collision_risk_penalty += 0.6
+                    elif distance < 0.40:
+                        collision_risk_penalty += 0.2
                     
-                    # Time-to-collision penalty
-                    if ttc < 1.0 and distance < 0.4:
+                    # Enhanced TTC penalty - stricter thresholds
+                    if ttc < 0.8 and distance < 0.35:
+                        collision_risk_penalty += 5.0
+                        dangerous_proximity = True
+                    elif ttc < 1.5 and distance < 0.45:
+                        collision_risk_penalty += 2.5
+                    elif ttc < 2.5 and distance < 0.55:
+                        collision_risk_penalty += 1.0
+                    elif ttc < 3.5 and distance < 0.65:
+                        collision_risk_penalty += 0.3
+                
+                # === SECONDARY: Side collision risk (lane changes) ===
+                elif abs(y_rel) < 0.28:
+                    if abs(x_rel) < 0.08 and abs(y_rel) < 0.12:
+                        # Very close side-by-side - extremely dangerous
+                        collision_risk_penalty += 5.0
+                        dangerous_proximity = True
+                    elif abs(x_rel) < 0.12 and abs(y_rel) < 0.18:
                         collision_risk_penalty += 3.0
-                    elif ttc < 2.0 and distance < 0.5:
+                    elif abs(x_rel) < 0.18 and abs(y_rel) < 0.22:
                         collision_risk_penalty += 1.5
-                    elif ttc < 3.0 and distance < 0.6:
+                    elif abs(x_rel) < 0.28 and abs(y_rel) < 0.28:
                         collision_risk_penalty += 0.5
                 
-                # === SECONDARY: Vehicles in adjacent lanes (side collisions) ===
-                elif abs(y_rel) < 0.25:  # Same or adjacent lane
-                    if abs(x_rel) < 0.10 and abs(y_rel) < 0.15:
-                        # Very close side-by-side
-                        collision_risk_penalty += 3.0
-                    elif abs(x_rel) < 0.15 and abs(y_rel) < 0.20:
-                        collision_risk_penalty += 1.5
-                    elif abs(x_rel) < 0.25 and abs(y_rel) < 0.25:
-                        collision_risk_penalty += 0.6
-                
-                # === TERTIARY: Vehicles behind closing fast ===
-                if x_rel < 0 and vx_rel < -0.15 and abs(y_rel) < 0.25:
-                    # Fast vehicle approaching from behind
-                    if distance < 0.15:
-                        collision_risk_penalty += 1.0
-                    elif distance < 0.25:
-                        collision_risk_penalty += 0.4
+                # === TERTIARY: Vehicles behind closing very fast ===
+                if x_rel < 0 and vx_rel < -0.18 and abs(y_rel) < 0.25:
+                    if distance < 0.12:
+                        collision_risk_penalty += 2.0
+                    elif distance < 0.20:
+                        collision_risk_penalty += 0.8
+                    elif distance < 0.30:
+                        collision_risk_penalty += 0.3
         
         reward -= collision_risk_penalty
         
         # Bonus for maintaining optimal following distance
-        if 0.35 <= min_forward_dist <= 0.7:
-            reward += 0.4
-        elif 0.25 <= min_forward_dist < 0.35:
-            reward += 0.2
-        elif 0.7 < min_forward_dist <= 1.0:
-            reward += 0.2
+        # Encourage safe spacing while allowing for speed
+        if not dangerous_proximity:
+            if 0.4 <= min_forward_dist <= 0.75:
+                reward += 0.6
+            elif 0.3 <= min_forward_dist < 0.4:
+                reward += 0.3
+            elif 0.75 < min_forward_dist <= 1.2:
+                reward += 0.3
         
     except (IndexError, AttributeError, TypeError):
         pass
     
-    # === SMOOTH DRIVING: Minimal penalties for necessary maneuvers ===
+    # === SMOOTH DRIVING: Minimal interference with necessary maneuvers ===
     try:
         if hasattr(action, '__len__') and len(action) > 0:
             steering = action[0]
@@ -138,13 +155,13 @@ def compute_reward(obs, action, info):
             steering = float(action)
             accel = 0.0
         
-        # Only penalize very extreme steering
-        if abs(steering) > 0.7:
-            reward -= (abs(steering) - 0.7) ** 2 * 0.2
-        
-        # Minimal penalty for extreme braking/acceleration
-        if abs(accel) > 0.85:
-            reward -= (abs(accel) - 0.85) * 0.1
+        # Penalize steering from a low threshold — smooth highway driving rarely needs >5-10°
+        if abs(steering) > 0.1:
+            reward -= (abs(steering) - 0.1) ** 2 * 1.5
+
+        # Penalize harsh braking/acceleration
+        if abs(accel) > 0.5:
+            reward -= (abs(accel) - 0.5) ** 2 * 0.5
         
     except (IndexError, TypeError, ValueError):
         pass

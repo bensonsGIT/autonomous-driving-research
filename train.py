@@ -1,3 +1,4 @@
+import argparse
 import json
 import os
 import time
@@ -9,13 +10,9 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import BaseCallback
 from agents.ppo_agent import make_env, make_vec_env_parallel, load_or_create_model, PPO_HYPERPARAMS
 
-TRAIN_STEPS = 100_000
+TRAIN_STEPS = 500_000
 EVAL_EPISODES = 100
-MODEL_PATH = "agents/ppo_highway_opt_42"
 RENDER_EVERY_N_EPISODES = 100
-SEED = 42
-
-# Seeds: 42, 7, 102, 0
 
 # --- Render callback ---
 class RenderCallback(BaseCallback):
@@ -57,12 +54,19 @@ class RenderCallback(BaseCallback):
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--seed", type=int, default=42)
+    args = parser.parse_args()
+
+    SEED = args.seed
+    MODEL_PATH = f"agents/ppo_highway_opt_{SEED}"
+
     np.random.seed(SEED)
     torch.manual_seed(SEED)
 
     train_env = make_vec_env_parallel(n_envs=6)
     eval_env = make_env()
-    model = load_or_create_model(train_env, seed=SEED, log_dir=f"./logs/seed_{SEED}")
+    model = load_or_create_model(train_env, model_path=MODEL_PATH, seed=SEED, log_dir=f"./logs/seed_{SEED}")
 
     # --- Training ---
     print(f"Training for {TRAIN_STEPS} steps...")
@@ -126,7 +130,7 @@ def main():
         "seed": SEED,
         "ppo_hyperparams": PPO_HYPERPARAMS,
     }
-    with open("results/latest.json", "w") as f:
+    with open(f"results/latest_seed_{SEED}.json", "w") as f:
         json.dump(metrics, f, indent=2)
     print(json.dumps(metrics, indent=2))
 
@@ -153,11 +157,11 @@ def main():
     axes[2].set_ylabel("Steps")
     axes[2].legend()
 
-    plt.suptitle("Training Evaluation Results", fontweight="bold")
+    plt.suptitle(f"Training Evaluation Results (seed {SEED})", fontweight="bold")
     plt.tight_layout()
-    plt.savefig("results/training_plot.png")
+    plt.savefig(f"results/training_plot_seed_{SEED}.png")
     plt.show()
-    print("Plot saved to results/training_plot.png")
+    print(f"Plot saved to results/training_plot_seed_{SEED}.png")
     print("Done. Run evaluate.py to watch the full agent replay.")
 
 

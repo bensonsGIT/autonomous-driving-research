@@ -1,0 +1,25 @@
+{
+  "episodes": 100,
+  "mean_reward": 255.05,
+  "mean_length": 39.63,
+  "total_crashes": 1,
+  "crash_rate": 0.01,
+  "min_reward": -55.2,
+  "max_reward": 262.43,
+  "avg_speed_ms": 37.15,
+  "avg_speed_kmh": 133.75,
+  "train_steps": 100000,
+  "seed": 0,
+  "ppo_hyperparams": {
+    "learning_rate": 0.0003,
+    "n_steps": 2048,
+    "batch_size": 64,
+    "n_epochs": 10,
+    "gamma": 0.99,
+    "gae_lambda": 0.95,
+    "clip_range": 0.2,
+    "ent_coef": 0.0,
+    "vf_coef": 0.5,
+    "max_grad_norm": 0.5
+  }
+}
