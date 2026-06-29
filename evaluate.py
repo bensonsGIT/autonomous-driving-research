@@ -8,12 +8,13 @@ import pygame
 import matplotlib.pyplot as plt
 from stable_baselines3 import PPO
 from agents.ppo_agent import make_env
+from sim.env_config import ENV_CONFIG
 
 EVAL_EPISODES = 100
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model", default="agents/ppo_highway", help="Path to model file (without .zip)")
+    parser.add_argument("--model", default="agents/ppo_highway_baseline_v2_42", help="Path to model file (without .zip)")
     parser.add_argument("--out", default="results/evaluate.json", help="Path to save eval metrics JSON")
     args = parser.parse_args()
 
@@ -133,7 +134,8 @@ def main():
             color=["steelblue", "seagreen"])
         axes[2].set_title("Mean Episode Length")
         axes[2].set_ylabel("Steps")
-        axes[2].axhline(y=100, color="gray", linestyle="--", label="Max (100)")
+        max_steps = ENV_CONFIG["duration"] * ENV_CONFIG["policy_frequency"]
+        axes[2].axhline(y=max_steps, color="gray", linestyle="--", label=f"Max ({max_steps})")
         axes[2].legend()
 
         plt.suptitle("Autonomous Driving Agent — Train vs Evaluate", fontweight="bold")

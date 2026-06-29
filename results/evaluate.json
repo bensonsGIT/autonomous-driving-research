@@ -1,0 +1,9 @@
+{
+  "episodes": 0,
+  "mean_reward": 0,
+  "mean_length": 0,
+  "total_crashes": 0,
+  "crash_rate": 0.0,
+  "min_reward": 0,
+  "max_reward": 0
+}
