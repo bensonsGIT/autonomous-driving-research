@@ -1,9 +1,0 @@
-{
-  "episodes": 100,
-  "crash_rate": 1.0,
-  "total_crashes": 100,
-  "mean_length": 7.08,
-  "avg_speed_ms": 28.7,
-  "avg_speed_kmh": 103.32,
-  "seed": 42
-}

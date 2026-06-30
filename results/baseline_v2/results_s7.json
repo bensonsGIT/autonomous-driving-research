@@ -10,7 +10,7 @@
   "avg_speed_kmh": 90.94,
   "train_steps": 500000,
   "seed": 7,
-  "reward_version": "v0_baseline",
+  "reward_version": "v0_minimal",
   "env_policy_frequency": 10,
   "env_duration": 400,
   "ppo_hyperparams": {

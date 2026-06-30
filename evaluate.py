@@ -33,6 +33,8 @@ def main():
     pygame.init()
     env = make_env(render_mode="human")
     obs, _ = env.reset()
+    start_x = env.unwrapped.vehicle.position[0] 
+    episode_progress = []  
     clock = pygame.time.Clock()
 
     episode_rewards = []
@@ -84,16 +86,18 @@ def main():
         pygame.display.flip()
         clock.tick(30)
 
-        if done or truncated:
-            episode_rewards.append(current_reward)
-            episode_lengths.append(current_length)
-            episode_crashes.append(int(current_crashed))
-            episodes_done += 1
-
-            current_reward = 0
-            current_length = 0
-            current_crashed = False
-            obs, _ = env.reset()
+    if done or truncated:
+        end_x = env.unwrapped.vehicle.position[0]
+        episode_progress.append(round(float(end_x - start_x), 1)) 
+        episode_rewards.append(current_reward)
+        episode_lengths.append(current_length)
+        episode_crashes.append(int(current_crashed))
+        episodes_done += 1
+        current_reward = 0
+        current_length = 0
+        current_crashed = False
+        obs, _ = env.reset()
+        start_x = env.unwrapped.vehicle.position[0]                
 
     env.close()
     pygame.quit()
@@ -147,3 +151,38 @@ def main():
 
 if __name__ == "__main__":
     main()
+import numpy as np
+
+def log_trajectory(model, env, every=20):
+    obs, info = env.reset()
+    v = env.unwrapped.vehicle
+    rows = []
+    step = 0
+    done = trunc = False
+    while not (done or trunc):
+        action, _ = model.predict(obs, deterministic=True)
+        obs, _, done, trunc, info = env.step(action)
+        if step % every == 0:
+            rows.append({
+                "step": step,
+                "x": round(float(v.position[0]), 1),
+                "y": round(float(v.position[1]), 1),
+                "heading": round(float(v.heading), 2),
+                "speed": round(float(info.get("speed", 0)), 1),
+            })
+        step += 1
+    return rows
+
+def behavior_flags(rows):
+    if not rows:
+        return {}
+    x_vals = [r["x"] for r in rows]
+    headings = [r["heading"] for r in rows]
+    speeds = [r["speed"] for r in rows]
+    x_progress = x_vals[-1] - x_vals[0]
+    heading_swing = max(headings) - min(headings)
+    return {
+        "is_circling": x_progress < 10 and heading_swing > 3.0,
+        "is_stalled": float(np.mean(speeds)) < 2.0,
+        "low_progress": x_progress < 20,
+    }

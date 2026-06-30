@@ -32,12 +32,12 @@ from agents.ppo_agent import PPO_HYPERPARAMS
 
 TRAIN_STEPS = 500_000
 EVAL_EPISODES = 100
-SEEDS = [42, 7, 0]
-OUT_DIR = "results/baseline_v2"
+SEEDS = [0, 7, 42, 102]
+OUT_DIR = "results/baseline_v2"  # overridden by --out-dir
 MAX_STEPS = ENV_CONFIG["duration"] * ENV_CONFIG["policy_frequency"]
 
 # Load minimal baseline reward from experiments/reward_v1.py
-_spec = importlib.util.spec_from_file_location("baseline_reward", "experiments/reward_v1.py")
+_spec = importlib.util.spec_from_file_location("baseline_reward", "rewards/baseline.py")
 _mod = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_mod)
 _minimal_compute_reward = _mod.compute_reward
@@ -81,8 +81,11 @@ def train_and_eval(seed, mode):
     np.random.seed(seed)
     torch.manual_seed(seed)
 
+    log_dir = os.path.join(OUT_DIR, "logs", f"{mode}_s{seed}")
+    os.makedirs(log_dir, exist_ok=True)
     train_env = cfg["make_vec_fn"]()
-    model = PPO("MlpPolicy", train_env, verbose=1, seed=seed, **PPO_HYPERPARAMS)
+    model = PPO("MlpPolicy", train_env, verbose=1, seed=seed,
+                tensorboard_log=log_dir, **PPO_HYPERPARAMS)
 
     print(f"\n[{mode}][seed {seed}] Training {TRAIN_STEPS:,} steps...")
     model.learn(total_timesteps=TRAIN_STEPS)
@@ -190,7 +193,17 @@ def run_mode(mode):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--mode", choices=["minimal", "native", "all"], default="all")
+    parser.add_argument("--seeds", type=int, nargs="+", default=None,
+                        help="Override SEEDS list (e.g. --seeds 0 7 42 102)")
+    parser.add_argument("--out-dir", default=None,
+                        help="Override output directory (default: results/baseline_v2)")
     args = parser.parse_args()
+
+    if args.out_dir is not None:
+        OUT_DIR = args.out_dir
+
+    if args.seeds is not None:
+        SEEDS[:] = args.seeds
 
     os.makedirs(OUT_DIR, exist_ok=True)
     modes = ["minimal", "native"] if args.mode == "all" else [args.mode]
